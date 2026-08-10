@@ -1,0 +1,5 @@
+UPGRADE CBT
+1. Endpoint tambah user admin sudah tersedia: POST /api/admin/users
+2. Siswa dapat mengerjakan ujian berulang (multi-attempt).
+3. Hapus UNIQUE exam_id + user_id pada schema.
+4. Import ulang database schema.sql agar perubahan aktif.

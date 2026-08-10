@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login - CBT App</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <main class="center-page">
+    <section class="card login-card">
+      <p class="eyebrow">CBT App</p>
+      <h1>Login</h1>
+      <p class="muted">Gunakan akun demo atau akun yang sudah ada di database.</p>
+
+      <form id="loginForm" class="form">
+        <label>Email</label>
+        <input id="email" type="email" value="siswa@cbt.test" required>
+
+        <label>Password</label>
+        <input id="password" type="password" value="password123" required>
+
+        <button class="button primary full" type="submit">Masuk</button>
+      </form>
+
+      <div id="message" class="message hidden"></div>
+      <br>
+      <div class="text-center mt-3">
+        <p class="small text-muted">Punya kode verifikasi? <a href="verify.html" class="text-decoration-none fw-semibold">Verifikasi Akun di Sini</a></p>
+      </div>
+
+      <!-- <div class="demo-box">
+        <strong>Akun demo</strong>
+        <p>Admin: admin@cbt.test</p>
+        <p>Guru: guru@cbt.test</p>
+        <p>Siswa: siswa@cbt.test</p>
+        <p>Password semua akun: password123</p>
+      </div> -->
+
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const message = document.getElementById('message');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      message.className = 'message hidden';
+      message.textContent = '';
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Login gagal.');
+        }
+
+        localStorage.setItem('cbt_token', data.token);
+        localStorage.setItem('cbt_user', JSON.stringify(data.user));
+        window.location.href = '/dashboard.html';
+      } catch (error) {
+        message.className = 'message error';
+        message.textContent = error.message;
+      }
+    });
+  </script>
+</body>
+</html>

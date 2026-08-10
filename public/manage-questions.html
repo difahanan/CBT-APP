@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kelola Soal - CBT App</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>CBT App</strong>
+      <span id="userInfo" class="muted"></span>
+    </div>
+    <div>
+      <a href="/dashboard.html" class="button small">Dashboard</a>
+      <button id="logoutButton" class="button small">Keluar</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <p class="eyebrow">Bank Soal</p>
+      <h1>Kelola Soal Ujian</h1>
+      <p class="muted">Tambah, edit, dan hapus soal untuk ujian yang Anda ampu. Setiap soal wajib punya tepat satu kunci jawaban.</p>
+
+      <label for="examSelect"><strong>Pilih Ujian</strong></label><br>
+      <select id="examSelect" class="input" style="max-width: 400px;"></select>
+
+      <div id="message" class="message hidden" style="margin-top: 12px;"></div>
+    </section>
+
+    <section class="card">
+      <h2>Ujian Saya</h2>
+      <div id="myExamListBox"><p class="muted">Memuat...</p></div>
+    </section>
+
+    <section class="card">
+      <h2 id="examFormTitle">Buat Ujian Baru</h2>
+      <p class="muted">Kalau mata pelajaran yang kamu mau belum ada di ujian manapun, buat ujian baru di sini dulu, baru tambah soal untuk ujian itu.</p>
+
+      <label for="newExamSubject"><strong>Mata Pelajaran</strong></label><br>
+      <select id="newExamSubject" class="input" style="max-width:300px;"></select>
+      <button type="button" class="button small" id="toggleNewSubjectBtn">+ Mata Pelajaran Baru</button>
+
+      <div id="newSubjectBox" style="display:none; margin-top:8px;">
+        <input id="newSubjectName" class="input" placeholder="Nama mata pelajaran baru (mis. Matematika)" style="max-width:300px;">
+      </div>
+
+      <br><br>
+      <input id="newExamTitle" class="input" placeholder="Judul Ujian" style="max-width:400px;"><br><br>
+      <textarea id="newExamDesc" class="input" rows="2" placeholder="Deskripsi (opsional)" style="width:100%; max-width:500px;"></textarea><br><br>
+      <label for="newExamDuration">Durasi (menit)</label><br>
+      <input id="newExamDuration" type="number" class="input" style="max-width:120px;" value="30" min="1"><br><br>
+
+      <strong>Jadwal Ujian (opsional — kosongkan kalau mau langsung aktif tanpa batas waktu)</strong><br>
+      <label for="newExamStart">Mulai</label>
+      <input id="newExamStart" type="datetime-local" class="input" style="max-width:220px;">
+      <label for="newExamEnd" style="margin-left:12px;">Selesai</label>
+      <input id="newExamEnd" type="datetime-local" class="input" style="max-width:220px;"><br><br>
+
+      <button class="button primary" id="createExamBtn" type="button">Buat Ujian</button>
+      <button class="button small" id="cancelExamEditBtn" type="button" style="display:none;">Batal Edit</button>
+      <div id="createExamMsg" style="margin-top:8px;"></div>
+    </section>
+
+    <section class="card" id="questionFormSection">
+      <h2 id="formTitle">Tambah Soal Baru</h2>
+
+      <label for="questionText">Teks Soal</label><br>
+      <textarea id="questionText" class="input" rows="3" style="width:100%; max-width:600px;" placeholder="Tulis pertanyaan di sini..."></textarea><br><br>
+
+      <label for="mediaFile">Gambar / Video Soal (opsional)</label><br>
+      <input id="mediaFile" type="file" class="input" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"><br>
+      <span class="muted" style="font-size:13px;">Maksimal 15MB. Format: JPG, PNG, GIF, WEBP, MP4, WEBM.</span>
+
+      <div id="mediaPreviewBox" style="margin-top:8px;"></div>
+      <label id="removeMediaLabel" style="display:none;">
+        <input type="checkbox" id="removeMediaCheckbox"> Hapus media yang sudah ada
+      </label><br><br>
+
+      <label for="difficultyLevel">Kelompok Soal (Tingkat Kesulitan)</label><br>
+      <select id="difficultyLevel" class="input" style="max-width:200px;">
+        <option value="Mudah">Mudah</option>
+        <option value="Sedang" selected>Sedang</option>
+        <option value="Sulit">Sulit</option>
+      </select><br><br>
+
+      <label for="pointValue">Poin</label><br>
+      <input id="pointValue" type="number" class="input" style="max-width:120px;" value="1" min="0" step="0.5"><br><br>
+
+      <strong>Opsi Jawaban (centang salah satu sebagai kunci jawaban)</strong>
+      <div id="optionsContainer"></div>
+      <button class="button small" id="addOptionBtn" type="button">+ Tambah Opsi</button>
+
+      <br><br>
+      <button class="button primary" id="saveQuestionBtn">Simpan Soal</button>
+      <button class="button small" id="cancelEditBtn" style="display:none">Batal Edit</button>
+      <div id="formMsg" style="margin-top: 10px;"></div>
+    </section>
+
+    <section class="card">
+      <h2>Daftar Soal</h2>
+      <label for="filterDifficulty"><strong>Filter Kelompok Soal:</strong></label>
+      <select id="filterDifficulty" class="input" style="max-width:200px; display:inline-block;">
+        <option value="">Semua</option>
+        <option value="Mudah">Mudah</option>
+        <option value="Sedang">Sedang</option>
+        <option value="Sulit">Sulit</option>
+      </select>
+
+      <div id="questionListBox" style="margin-top: 16px;"></div>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('cbt_token');
+    const user = JSON.parse(localStorage.getItem('cbt_user') || 'null');
+
+    if (!token || !user) {
+      window.location.href = '/login.html';
+    }
+    if (user.role !== 'teacher' && user.role !== 'admin') {
+      alert('Halaman ini hanya untuk Guru/Admin.');
+      window.location.href = '/dashboard.html';
+    }
+
+    const headers = { Authorization: `Bearer ${token}` };
+    const jsonHeaders = { ...headers, 'Content-Type': 'application/json' };
+
+    document.getElementById('userInfo').textContent = `— ${user.name} (${user.role})`;
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      localStorage.removeItem('cbt_token');
+      localStorage.removeItem('cbt_user');
+      window.location.href = '/login.html';
+    });
+
+    const examSelect = document.getElementById('examSelect');
+    const message = document.getElementById('message');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const questionListBox = document.getElementById('questionListBox');
+    const filterDifficulty = document.getElementById('filterDifficulty');
+
+    let editingQuestionId = null;
+    let optionCount = 0;
+
+    function showMessage(text, type = 'error') {
+      message.className = `message ${type}`;
+      message.textContent = text;
+      message.classList.remove('hidden');
+    }
+
+    // ==== Render baris opsi jawaban (dipakai untuk tambah/edit) ====
+    function addOptionRow(label = '', text = '', isCorrect = false) {
+      optionCount++;
+      const rowId = `opt_${optionCount}`;
+      const div = document.createElement('div');
+      div.className = 'option-row';
+      div.id = rowId;
+      div.style.margin = '6px 0';
+      div.innerHTML = `
+        <input type="text" class="input opt-label" placeholder="Label (A-E)" maxlength="1" style="width:60px; display:inline-block;" value="${label}">
+        <input type="text" class="input opt-text" placeholder="Teks opsi jawaban" style="width:300px; display:inline-block;" value="${text}">
+        <label style="margin-left:8px;">
+          <input type="checkbox" class="opt-correct" ${isCorrect ? 'checked' : ''}> Kunci Jawaban
+        </label>
+        <button type="button" class="button small" onclick="document.getElementById('${rowId}').remove(); updateAddOptionButtonState();">Hapus</button>
+      `;
+      optionsContainer.appendChild(div);
+      updateAddOptionButtonState();
+    }
+
+    document.getElementById('addOptionBtn').addEventListener('click', () => addOptionRow());
+
+    // Sistem cuma mendukung label A-E (lihat constraint di database), jadi tombol
+    // "+ Tambah Opsi" dimatikan otomatis kalau opsi sudah mencapai 5.
+    function updateAddOptionButtonState() {
+      const addBtn = document.getElementById('addOptionBtn');
+      if (!addBtn) return; // defensive: kalau elemen ini suatu saat dihapus dari HTML, script lain tetap jalan
+      const currentCount = document.querySelectorAll('.option-row').length;
+      addBtn.disabled = currentCount >= 5;
+      addBtn.title = currentCount >= 5 ? 'Maksimal 5 opsi (A-E)' : '';
+    }
+
+    function resetForm() {
+      editingQuestionId = null;
+      document.getElementById('formTitle').innerText = 'Tambah Soal Baru';
+      document.getElementById('saveQuestionBtn').innerText = 'Simpan Soal';
+      document.getElementById('cancelEditBtn').style.display = 'none';
+      document.getElementById('questionText').value = '';
+      document.getElementById('difficultyLevel').value = 'Sedang';
+      document.getElementById('pointValue').value = 1;
+      document.getElementById('mediaFile').value = '';
+      document.getElementById('mediaPreviewBox').innerHTML = '';
+      document.getElementById('removeMediaLabel').style.display = 'none';
+      document.getElementById('removeMediaCheckbox').checked = false;
+      optionsContainer.innerHTML = '';
+      optionCount = 0;
+      // Default 5 opsi (A-E) sesuai diagram "Pilihan Jawaban A-E" — guru tinggal isi/hapus yang tidak perlu
+      addOptionRow('A', '');
+      addOptionRow('B', '');
+      addOptionRow('C', '');
+      addOptionRow('D', '');
+      addOptionRow('E', '');
+      updateAddOptionButtonState();
+    }
+
+    document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+
+    // Preview media yang baru dipilih sebelum diupload
+    document.getElementById('mediaFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const previewBox = document.getElementById('mediaPreviewBox');
+      if (!file) {
+        previewBox.innerHTML = '';
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      if (file.type.startsWith('image/')) {
+        previewBox.innerHTML = `<img src="${url}" style="max-width:300px; max-height:200px; border-radius:8px;">`;
+      } else if (file.type.startsWith('video/')) {
+        previewBox.innerHTML = `<video src="${url}" controls style="max-width:300px; max-height:200px; border-radius:8px;"></video>`;
+      }
+    });
+
+    // ==== Ambil daftar ujian milik guru ini (admin bisa lihat semua) ====
+    async function loadExams() {
+      try {
+        const res = await fetch('/api/admin/exams', { headers });
+        const data = await res.json();
+        let exams = data.exams || [];
+
+        // Guru cuma boleh kelola ujian miliknya sendiri (nama pengampu = nama user login)
+        if (user.role === 'teacher') {
+          exams = exams.filter((e) => e.teacher_name === user.name);
+        }
+
+        if (exams.length === 0) {
+          showMessage('Belum ada ujian yang bisa dikelola. Hubungi admin untuk membuat ujian dulu.', 'error');
+          return;
+        }
+
+        examSelect.innerHTML = exams
+          .map((e) => `<option value="${e.id}">${e.title} (${e.subject_name})</option>`)
+          .join('');
+
+        loadQuestions();
+      } catch (error) {
+        showMessage('Gagal memuat daftar ujian.');
+      }
+    }
+
+    examSelect.addEventListener('change', () => {
+      resetForm();
+      loadQuestions();
+    });
+    filterDifficulty.addEventListener('change', loadQuestions);
+
+    // ==== Ambil daftar soal untuk ujian yang dipilih ====
+    async function loadQuestions() {
+      const examId = examSelect.value;
+      if (!examId) return;
+
+      const difficulty = filterDifficulty.value;
+      const url = `/api/exams/${examId}/manage-questions${difficulty ? `?difficulty=${difficulty}` : ''}`;
+
+      try {
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+
+        if (!res.ok) {
+          questionListBox.innerHTML = `<p class="message error">${data.message}</p>`;
+          return;
+        }
+
+        const questions = data.questions || [];
+        if (questions.length === 0) {
+          questionListBox.innerHTML = '<p class="muted">Belum ada soal untuk kelompok ini.</p>';
+          return;
+        }
+
+        questionListBox.innerHTML = questions.map((q) => `
+          <div class="card" style="padding:16px; margin-bottom:12px;">
+            <p><strong>#${q.question_order}. ${q.question_text}</strong></p>
+            ${renderMediaTag(q.media_url, q.media_type)}
+            <p class="muted">Kelompok: ${q.difficulty_level} • Poin: ${q.point}</p>
+            <ul>
+              ${q.options.map((o) => `
+                <li>${o.option_label}. ${o.option_text} ${o.is_correct ? '<strong style="color: green;">(Kunci Jawaban)</strong>' : ''}</li>
+              `).join('')}
+            </ul>
+            <button class="button small" onclick='editQuestion(${JSON.stringify(q)})'>Edit</button>
+            <button class="button small" style="background-color:#dc3545; color:white; border:none;" onclick="deleteQuestion(${q.id})">Hapus</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        questionListBox.innerHTML = '<p class="message error">Gagal memuat daftar soal.</p>';
+      }
+    }
+
+    // Helper: render <img> atau <video> tergantung media_type, aman kalau media_url null
+    function renderMediaTag(mediaUrl, mediaType) {
+      if (!mediaUrl) return '';
+      if (mediaType === 'video') {
+        return `<video src="${mediaUrl}" controls style="max-width:320px; max-height:220px; border-radius:8px; margin:8px 0;"></video>`;
+      }
+      return `<img src="${mediaUrl}" style="max-width:320px; max-height:220px; border-radius:8px; margin:8px 0;">`;
+    }
+
+    function editQuestion(q) {
+      editingQuestionId = q.id;
+      document.getElementById('formTitle').innerText = `Edit Soal #${q.question_order}`;
+      document.getElementById('saveQuestionBtn').innerText = 'Update Soal';
+      document.getElementById('cancelEditBtn').style.display = 'inline-block';
+      document.getElementById('questionText').value = q.question_text;
+      document.getElementById('difficultyLevel').value = q.difficulty_level;
+      document.getElementById('pointValue').value = q.point;
+
+      document.getElementById('mediaFile').value = '';
+      document.getElementById('removeMediaCheckbox').checked = false;
+      if (q.media_url) {
+        document.getElementById('mediaPreviewBox').innerHTML = renderMediaTag(q.media_url, q.media_type);
+        document.getElementById('removeMediaLabel').style.display = 'inline-block';
+      } else {
+        document.getElementById('mediaPreviewBox').innerHTML = '';
+        document.getElementById('removeMediaLabel').style.display = 'none';
+      }
+
+      optionsContainer.innerHTML = '';
+      optionCount = 0;
+      q.options.forEach((o) => addOptionRow(o.option_label, o.option_text, !!o.is_correct));
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function deleteQuestion(id) {
+      if (!confirm('Yakin ingin menghapus soal ini? Tindakan ini tidak bisa dibatalkan.')) return;
+
+      try {
+        const res = await fetch(`/api/exams/manage-questions/${id}`, { method: 'DELETE', headers });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || 'Gagal menghapus soal.');
+          return;
+        }
+        loadQuestions();
+      } catch (error) {
+        alert('Gagal menghapus soal.');
+      }
+    }
+
+    // ==== Simpan soal (create ATAU update, tergantung editingQuestionId) ====
+    document.getElementById('saveQuestionBtn').addEventListener('click', async () => {
+      const examId = examSelect.value;
+      const question_text = document.getElementById('questionText').value.trim();
+      const difficulty_level = document.getElementById('difficultyLevel').value;
+      const point = Number(document.getElementById('pointValue').value);
+
+      const optionRows = document.querySelectorAll('.option-row');
+      const options = Array.from(optionRows).map((row) => ({
+        option_label: row.querySelector('.opt-label').value.trim().toUpperCase(),
+        option_text: row.querySelector('.opt-text').value.trim(),
+        is_correct: row.querySelector('.opt-correct').checked
+      }));
+
+      const formMsg = document.getElementById('formMsg');
+
+      if (!question_text) {
+        formMsg.textContent = 'Teks soal wajib diisi.';
+        return;
+      }
+      if (options.length < 2) {
+        formMsg.textContent = 'Minimal 2 opsi jawaban diperlukan.';
+        return;
+      }
+      const correctCount = options.filter((o) => o.is_correct).length;
+      if (correctCount !== 1) {
+        formMsg.textContent = 'Harus ada tepat satu opsi yang dicentang sebagai kunci jawaban.';
+        return;
+      }
+
+      // Pakai FormData (bukan JSON.stringify) karena harus bisa bawa file gambar/video.
+      // PENTING: jangan set header Content-Type manual di sini - browser otomatis
+      // mengisi "multipart/form-data; boundary=..." sendiri, kalau dipaksa "application/json"
+      // malah request-nya jadi rusak dan tidak terbaca backend.
+      const formData = new FormData();
+      formData.append('question_text', question_text);
+      formData.append('difficulty_level', difficulty_level);
+      formData.append('point', point);
+      formData.append('options', JSON.stringify(options));
+
+      const mediaFileInput = document.getElementById('mediaFile');
+      if (mediaFileInput.files[0]) {
+        formData.append('media', mediaFileInput.files[0]);
+      }
+      const removeMediaCheckbox = document.getElementById('removeMediaCheckbox');
+      if (editingQuestionId && removeMediaCheckbox.checked) {
+        formData.append('remove_media', 'true');
+      }
+
+      // Cegah double-click saat upload sedang berjalan - klik kedua di tengah
+      // proses upload bisa bikin browser membatalkan request pertama (Request aborted)
+      const saveBtn = document.getElementById('saveQuestionBtn');
+      const originalBtnText = saveBtn.innerText;
+      saveBtn.disabled = true;
+      saveBtn.innerText = 'Menyimpan...';
+      formMsg.textContent = mediaFileInput.files[0]
+        ? 'Mengupload media, mohon tunggu (bisa beberapa detik tergantung ukuran file)...'
+        : 'Menyimpan...';
+
+      try {
+        let res;
+        if (editingQuestionId) {
+          res = await fetch(`/api/exams/manage-questions/${editingQuestionId}`, {
+            method: 'PUT',
+            headers, // cuma Authorization, TANPA Content-Type
+            body: formData
+          });
+        } else {
+          res = await fetch(`/api/exams/${examId}/manage-questions`, {
+            method: 'POST',
+            headers, // cuma Authorization, TANPA Content-Type
+            body: formData
+          });
+        }
+
+        const data = await res.json();
+        formMsg.textContent = data.message || 'Selesai.';
+
+        if (res.ok) {
+          resetForm();
+          loadQuestions();
+        }
+      } catch (error) {
+        formMsg.textContent = 'Gagal menyimpan soal. Coba lagi (pastikan server tidak sedang restart).';
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = originalBtnText;
+      }
+    });
+
+    // ==== Kelola Ujian: load mata pelajaran + daftar ujian milik guru ====
+    const newExamSubject = document.getElementById('newExamSubject');
+    const newSubjectBox = document.getElementById('newSubjectBox');
+    const newSubjectName = document.getElementById('newSubjectName');
+    const myExamListBox = document.getElementById('myExamListBox');
+
+    let editingExamId = null;
+
+    async function loadSubjects() {
+      try {
+        const res = await fetch('/api/admin/subjects', { headers });
+        const data = await res.json();
+        const subjects = data.subjects || [];
+        newExamSubject.innerHTML =
+          '<option value="">-- pilih mata pelajaran --</option>' +
+          subjects.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
+      } catch (error) {
+        newExamSubject.innerHTML = '<option value="">Gagal memuat mata pelajaran</option>';
+      }
+    }
+
+    document.getElementById('toggleNewSubjectBtn').addEventListener('click', () => {
+      const isHidden = newSubjectBox.style.display === 'none';
+      newSubjectBox.style.display = isHidden ? 'block' : 'none';
+      if (isHidden) {
+        newExamSubject.value = ''; // kosongkan pilihan lama, user mau bikin baru
+      }
+    });
+
+    // Konversi Date/ISO string dari server -> format yang dipahami <input type="datetime-local">
+    function toLocalInputValue(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // Konversi balik dari input datetime-local -> format yang diterima MySQL
+    function toMysqlDatetime(inputValue) {
+      if (!inputValue) return null;
+      return inputValue.replace('T', ' ') + ':00';
+    }
+
+    async function loadMyExams() {
+      try {
+        const res = await fetch('/api/admin/exams', { headers });
+        const data = await res.json();
+        let exams = data.exams || [];
+
+        if (user.role === 'teacher') {
+          exams = exams.filter((e) => e.teacher_name === user.name);
+        }
+
+        if (exams.length === 0) {
+          myExamListBox.innerHTML = '<p class="muted">Belum ada ujian. Buat ujian baru di bawah.</p>';
+          return;
+        }
+
+        myExamListBox.innerHTML = exams.map((e) => {
+          const jadwal = (e.start_time && e.end_time)
+            ? `${new Date(e.start_time).toLocaleString('id-ID')} — ${new Date(e.end_time).toLocaleString('id-ID')}`
+            : 'Tanpa jadwal (langsung aktif)';
+          const statusLabel = e.is_active ? 'Aktif' : 'Nonaktif';
+          const statusColor = e.is_active ? 'green' : '#999';
+
+          return `
+            <div class="card" style="padding:14px; margin-bottom:10px;">
+              <strong>${e.title}</strong> <span class="muted">(${e.subject_name})</span><br>
+              <span class="muted">Durasi: ${e.duration_minutes} menit • Jadwal: ${jadwal} • Status:
+                <span style="color:${statusColor}; font-weight:bold;">${statusLabel}</span>
+              </span><br><br>
+              <button class="button small" onclick='editExam(${JSON.stringify(e)})'>Edit</button>
+              <button class="button small" onclick="toggleExamActive(${e.id}, ${e.is_active ? 0 : 1})">${e.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        myExamListBox.innerHTML = '<p class="message error">Gagal memuat daftar ujian.</p>';
+      }
+    }
+
+    function editExam(e) {
+      editingExamId = e.id;
+      document.getElementById('examFormTitle').innerText = `Edit Ujian: ${e.title}`;
+      document.getElementById('createExamBtn').innerText = 'Update Ujian';
+      document.getElementById('cancelExamEditBtn').style.display = 'inline-block';
+
+      newExamSubject.value = e.subject_id;
+      newSubjectBox.style.display = 'none';
+      document.getElementById('newExamTitle').value = e.title;
+      document.getElementById('newExamDesc').value = e.description || '';
+      document.getElementById('newExamDuration').value = e.duration_minutes;
+      document.getElementById('newExamStart').value = toLocalInputValue(e.start_time);
+      document.getElementById('newExamEnd').value = toLocalInputValue(e.end_time);
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetExamForm() {
+      editingExamId = null;
+      document.getElementById('examFormTitle').innerText = 'Buat Ujian Baru';
+      document.getElementById('createExamBtn').innerText = 'Buat Ujian';
+      document.getElementById('cancelExamEditBtn').style.display = 'none';
+      document.getElementById('newExamTitle').value = '';
+      document.getElementById('newExamDesc').value = '';
+      document.getElementById('newExamDuration').value = 30;
+      document.getElementById('newExamStart').value = '';
+      document.getElementById('newExamEnd').value = '';
+      newSubjectName.value = '';
+      newSubjectBox.style.display = 'none';
+    }
+
+    document.getElementById('cancelExamEditBtn').addEventListener('click', resetExamForm);
+
+    async function toggleExamActive(id, newStatus) {
+      try {
+        const res = await fetch(`/api/exams/${id}`, {
+          method: 'PUT',
+          headers: jsonHeaders,
+          body: JSON.stringify({ is_active: newStatus })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || 'Gagal mengubah status ujian.');
+          return;
+        }
+        loadMyExams();
+        loadExams();
+      } catch (error) {
+        alert('Gagal mengubah status ujian.');
+      }
+    }
+
+    document.getElementById('createExamBtn').addEventListener('click', async () => {
+      const createExamMsg = document.getElementById('createExamMsg');
+      const title = document.getElementById('newExamTitle').value.trim();
+      const description = document.getElementById('newExamDesc').value.trim();
+      const duration_minutes = Number(document.getElementById('newExamDuration').value);
+      const start_time = toMysqlDatetime(document.getElementById('newExamStart').value);
+      const end_time = toMysqlDatetime(document.getElementById('newExamEnd').value);
+
+      if (!title || !duration_minutes) {
+        createExamMsg.textContent = 'Judul dan durasi ujian wajib diisi.';
+        return;
+      }
+      if (start_time && end_time && new Date(end_time) <= new Date(start_time)) {
+        createExamMsg.textContent = 'Waktu selesai harus setelah waktu mulai.';
+        return;
+      }
+
+      try {
+        if (editingExamId) {
+          // Mode EDIT: tidak perlu urus mata pelajaran baru, cukup update field yang ada
+          const res = await fetch(`/api/exams/${editingExamId}`, {
+            method: 'PUT',
+            headers: jsonHeaders,
+            body: JSON.stringify({ title, description, duration_minutes, start_time, end_time })
+          });
+          const data = await res.json();
+          createExamMsg.textContent = data.message || 'Selesai.';
+
+          if (res.ok) {
+            resetExamForm();
+            loadMyExams();
+            loadExams();
+          }
+          return;
+        }
+
+        // Mode CREATE
+        let subjectId = newExamSubject.value;
+        const newName = newSubjectName.value.trim();
+        if (newSubjectBox.style.display !== 'none' && newName) {
+          const subjRes = await fetch('/api/admin/subjects', {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify({ name: newName })
+          });
+          const subjData = await subjRes.json();
+          if (!subjRes.ok) {
+            createExamMsg.textContent = subjData.message || 'Gagal membuat mata pelajaran.';
+            return;
+          }
+          subjectId = subjData.id;
+        }
+
+        if (!subjectId) {
+          createExamMsg.textContent = 'Pilih mata pelajaran atau isi nama mata pelajaran baru.';
+          return;
+        }
+
+        const examRes = await fetch('/api/exams', {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({ subject_id: subjectId, title, description, duration_minutes, start_time, end_time })
+        });
+        const examData = await examRes.json();
+        createExamMsg.textContent = examData.message || 'Selesai.';
+
+        if (examRes.ok) {
+          resetExamForm();
+          await loadSubjects();
+          await loadMyExams();
+          await loadExams(); // refresh dropdown Pilih Ujian supaya ujian baru langsung muncul
+        }
+      } catch (error) {
+        createExamMsg.textContent = 'Gagal menyimpan ujian.';
+      }
+    });
+
+    resetForm();
+    resetExamForm();
+    loadSubjects();
+    loadMyExams();
+    loadExams();
+  </script>
+</body>
+</html>

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - CBT App</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>CBT App</strong>
+      <span id="userInfo" class="muted"></span>
+    </div>
+    <button id="logoutButton" class="button small">Keluar</button>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <p class="eyebrow">Dashboard</p>
+      <h1>Daftar Ujian</h1>
+      <p class="muted">Siswa dapat mengerjakan ujian aktif. Guru dan admin dapat melihat ringkasan hasil.</p>
+      <a id="manageQuestionsLink" href="/manage-questions.html" class="button primary" style="display:none; margin-bottom:12px;">Kelola Soal (Bank Soal)</a>
+      <a id="reportLink" href="/report.html" class="button small" style="display:none; margin-bottom:12px;">Laporan</a>
+      <div id="message" class="message hidden"></div>
+      <div id="examList" class="grid"></div>
+    </section>
+
+    <section class="card" id="resultsSection">
+      <h2>Hasil / Ringkasan</h2>
+      <div id="resultsBox" class="table-wrap"></div>
+    </section>
+  
+    <section class="card" id="adminUserSection" style="display:none">
+      <h2 id="userFormTitle">Tambah Akun Guru / Siswa</h2>
+      <input id="newName" placeholder="Nama" class="input"><br><br>
+      <input id="newEmail" placeholder="Email" class="input"><br><br>
+      <input id="newPassword" placeholder="Password" class="input"><br><br>
+      <select id="newRole" class="input">
+        <option value="student">Siswa</option>
+        <option value="teacher">Guru</option>
+        <option value="admin">Admin</option>
+      </select><br><br>
+      <input id="newClass" placeholder="Kelas (opsional)" class="input"><br><br>
+      <button class="button primary" id="saveUserBtn" onclick="saveUser()">Simpan Akun</button>
+      <button class="button small" id="cancelEditBtn" style="display:none" onclick="cancelEdit()">Batal Edit</button>
+      <div id="userCreateMsg" style="margin-top: 10px;"></div>
+
+      <br><hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;"><br>
+
+      <h2>Daftar Akun & Status Verifikasi</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nama</th>
+              <th>Email</th>
+              <th>Kelas</th>
+              <th>Role</th>
+              <th>Status Verifikasi</th>
+              <th>Kode Demo</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="adminUserTableBody">
+            </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('cbt_token');
+    const user = JSON.parse(localStorage.getItem('cbt_user') || 'null'); // Variabel login global
+
+    if (!token || !user) {
+      window.location.href = '/login.html';
+    }
+
+    const headers = { Authorization: `Bearer ${token}` };
+    const userInfo = document.getElementById('userInfo');
+    const examList = document.getElementById('examList');
+    const resultsBox = document.getElementById('resultsBox');
+    const message = document.getElementById('message');
+
+    userInfo.textContent = `— ${user.name} (${user.role})`;
+
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      localStorage.removeItem('cbt_token');
+      localStorage.removeItem('cbt_user');
+      window.location.href = '/login.html';
+    });
+
+    function showMessage(text, type = 'error') {
+      message.className = `message ${type}`;
+      message.textContent = text;
+    }
+
+    async function loadExams() {
+      try {
+        const response = await fetch('/api/exams', { headers });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Gagal mengambil data ujian.');
+
+        if (data.exams.length === 0) {
+          examList.innerHTML = '<p class="muted">Belum ada ujian aktif.</p>';
+          return;
+        }
+
+        examList.innerHTML = data.exams.map((exam) => {
+          const status = exam.attempt_status ? `Status: ${exam.attempt_status}` : 'Belum dikerjakan';
+          const score = exam.score !== null && exam.score !== undefined ? `<p>Nilai: <strong>${exam.score}</strong></p>` : '';
+          const studentButton = user.role === 'student'
+            ? `<button class="button primary" onclick="startExam(${exam.id})">Kerjakan Ujian</button>`
+            : `<button class="button primary" onclick="loadExamResults(${exam.id})">Lihat Hasil</button>`;
+
+          return `
+            <article class="exam-card">
+              <p class="eyebrow">${exam.subject_name}</p>
+              <h3>${exam.title}</h3>
+              <p>${exam.description || ''}</p>
+              <p>Durasi: ${exam.duration_minutes} menit</p>
+              <p>${status}</p>
+              ${score}
+              ${studentButton}
+            </article>
+          `;
+        }).join('');
+      } catch (error) {
+        showMessage(error.message);
+      }
+    }
+
+    async function startExam(examId) {
+      try {
+        const response = await fetch(`/api/exams/${examId}/start`, {
+          method: 'POST',
+          headers
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Gagal memulai ujian.');
+        window.location.href = `/exam.html?examId=${examId}`;
+      } catch (error) {
+        showMessage(error.message);
+      }
+    }
+
+    async function loadMyResults() {
+      if (user.role !== 'student') {
+        loadAdminSummary();
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/exams/my-results', { headers });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Gagal mengambil hasil.');
+
+        if (data.results.length === 0) {
+          resultsBox.innerHTML = '<p class="muted">Belum ada hasil ujian.</p>';
+          return;
+        }
+
+        resultsBox.innerHTML = `
+          <table>
+            <thead><tr><th>Ujian</th><th>Mata Pelajaran</th><th>Status</th><th>Nilai</th></tr></thead>
+            <tbody>
+              ${data.results.map((item) => `
+                <tr>
+                  <td>${item.title}</td>
+                  <td>${item.subject_name}</td>
+                  <td>${item.status}</td>
+                  <td>${item.score ?? '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        resultsBox.innerHTML = `<p class="error-text">${error.message}</p>`;
+      }
+    }
+
+    async function loadAdminSummary() {
+      try {
+        const response = await fetch('/api/admin/summary', { headers });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Gagal mengambil ringkasan.');
+
+        resultsBox.innerHTML = `
+          <div class="summary-grid">
+            <div><strong>${data.total_users}</strong><span>User</span></div>
+            <div><strong>${data.total_exams}</strong><span>Ujian</span></div>
+            <div><strong>${data.total_attempts}</strong><span>Pengerjaan</span></div>
+          </div>
+          <p class="muted">Klik tombol Lihat Hasil pada kartu ujian untuk melihat nilai siswa.</p>
+        `;
+      } catch (error) {
+        resultsBox.innerHTML = `<p class="error-text">${error.message}</p>`;
+      }
+    }
+
+    async function loadExamResults(examId) {
+      try {
+        const response = await fetch(`/api/exams/${examId}/results`, { headers });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Gagal mengambil hasil ujian.');
+
+        if (data.results.length === 0) {
+          resultsBox.innerHTML = '<p class="muted">Belum ada siswa yang mengerjakan ujian ini.</p>';
+          return;
+        }
+
+        const s = data.summary;
+        const summaryHtml = `
+          <div class="summary-grid" style="margin-bottom:16px;">
+            <div><strong>${s.total_participants}</strong><br><span class="muted">Peserta</span></div>
+            <div><strong>${s.submitted_count}</strong><br><span class="muted">Sudah Submit</span></div>
+            <div><strong>${s.average_score ?? '-'}</strong><br><span class="muted">Rata-rata Nilai</span></div>
+            <div><strong>${s.highest_score ?? '-'}</strong><br><span class="muted">Nilai Tertinggi</span></div>
+            <div><strong>${s.lowest_score ?? '-'}</strong><br><span class="muted">Nilai Terendah</span></div>
+          </div>
+        `;
+
+        resultsBox.innerHTML = summaryHtml + `
+          <table>
+            <thead><tr><th>Nama</th><th>Email</th><th>Kelas</th><th>Status</th><th>Nilai</th></tr></thead>
+            <tbody>
+              ${data.results.map((item) => `
+                <tr>
+                  <td>${item.student_name}</td>
+                  <td>${item.student_email}</td>
+                  <td>${item.class_name || '-'}</td>
+                  <td>${item.status}</td>
+                  <td>${item.score ?? '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        resultsBox.innerHTML = `<p class="error-text">${error.message}</p>`;
+      }
+    }
+
+    // ==========================================
+    // LOGIKA KHUSUS HALAMAN ADMIN (MANAGEMENT USER)
+    // ==========================================
+    
+    async function loadUsers() {
+      const tableBody = document.getElementById('adminUserTableBody');
+      if (!tableBody) return;
+
+      try {
+        const response = await fetch('/api/admin/users', { headers });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Gagal mengambil data user.');
+
+        tableBody.innerHTML = ''; 
+
+        const usersArray = Array.isArray(data) ? data : (data.users || []);
+        cachedUsers = usersArray;
+
+        if (usersArray.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center;">Belum ada user.</td></tr>';
+          return;
+        }
+
+        usersArray.forEach((u) => {
+          const statusBadge = u.is_active === 1 
+            ? '<span style="background-color: #28a745; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">✔ Terverifikasi</span>' 
+            : '<span style="background-color: #ffc107; color: #212529; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">⏳ Belum Verifikasi</span>';
+
+          const roleBadge = `<span style="background-color: #6c757d; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px;">${u.role}</span>`;
+
+          // PERBAIKAN DI SINI: Logika menahan/menampilkan histori kode sesuai permintaanmu
+          let demoCode = '<span style="color: #bbb;">-</span>'; // Defaultnya adalah strip
+          
+          if (u.role !== 'admin') { 
+            if (u.is_active === 0) {
+               // Tetap strip jika belum aktif
+               demoCode = '<span style="color: #bbb;">-</span>';
+            } else if (u.is_active === 1 && u.verification_code && u.verification_code !== '-') {
+               // Tampilkan kode verifikasinya JIKA SUDAH AKTIF sebagai bukti histori
+               demoCode = `<strong style="font-family: monospace; font-size: 14px; letter-spacing: 1px; color: #333;">${u.verification_code}</strong>`;
+            }
+          }
+
+          const row = `
+            <tr>
+              <td>${u.id}</td>
+              <td>${u.name}</td>
+              <td>${u.email}</td>
+              <td>${u.class_name || '-'}</td>
+              <td>${roleBadge}</td>
+              <td>${statusBadge}</td>
+              <td>${demoCode}</td> 
+              <td>
+                <button class="button small" style="background-color: #7d7d7d; color: white; border: none;" onclick="editUser(${u.id})">Edit</button>
+                <button class="button small" style="background-color: #dc3545; color: white; border: none;" onclick="deleteUser(${u.id})">Hapus</button>
+              </td>
+            </tr>
+          `;
+          tableBody.innerHTML += row;
+        });
+      } catch (error) {
+        tableBody.innerHTML = `<tr><td colspan="8" class="error-text" style="color: red;">${error.message}</td></tr>`;
+      }
+    }
+
+    if (user.role === 'teacher' || user.role === 'admin') {
+      document.getElementById('manageQuestionsLink').style.display = 'inline-block';
+      document.getElementById('reportLink').style.display = 'inline-block';
+    }
+
+    if (user.role === 'admin') {
+      document.getElementById('adminUserSection').style.display = 'block';
+      loadUsers(); 
+    }
+
+    // ==== MANAJEMEN USER: state untuk mode edit ====
+    let editingUserId = null;
+    let cachedUsers = [];
+
+    function editUser(id) {
+      const u = cachedUsers.find((x) => x.id === id);
+      if (!u) return;
+
+      editingUserId = id;
+      newName.value = u.name;
+      newEmail.value = u.email;
+      newPassword.value = '';
+      newPassword.placeholder = 'Password (tidak dipakai saat edit)';
+      newPassword.disabled = true;
+      newRole.value = u.role;
+      newClass.value = u.class_name || '';
+
+      document.getElementById('userFormTitle').innerText = `Edit Akun: ${u.name}`;
+      document.getElementById('saveUserBtn').innerText = 'Update Akun';
+      document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+      document.getElementById('adminUserSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      editingUserId = null;
+      newName.value = '';
+      newEmail.value = '';
+      newPassword.value = '';
+      newPassword.placeholder = 'Password';
+      newPassword.disabled = false;
+      newRole.value = 'student';
+      newClass.value = '';
+
+      document.getElementById('userFormTitle').innerText = 'Tambah Akun Guru / Siswa';
+      document.getElementById('saveUserBtn').innerText = 'Simpan Akun';
+      document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    // saveUser menggantikan createUser sebagai satu pintu masuk: create ATAU update
+    async function saveUser() {
+      if (editingUserId) {
+        if (newRole.value === 'admin') {
+          if (!confirm('Anda akan memberikan hak akses ADMIN ke akun ini. Yakin?')) {
+            return; // batalkan submit kalau admin ragu
+          }
+        }
+
+        try {
+          const r = await fetch(`/api/admin/users/${editingUserId}`, {
+            method: 'PUT',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: newName.value,
+              email: newEmail.value,
+              role: newRole.value,
+              class_name: newClass.value
+            })
+          });
+          const d = await r.json();
+          document.getElementById('userCreateMsg').innerText = d.message || 'Selesai';
+
+          if (r.ok) {
+            cancelEdit();
+            loadUsers();
+          }
+        } catch (error) {
+          document.getElementById('userCreateMsg').innerText = 'Gagal memperbarui akun.';
+        }
+        return;
+      }
+
+      await createUser();
+    }
+
+    async function deleteUser(id) {
+      const target = cachedUsers.find((x) => x.id === id);
+      const label = target ? `${target.name} (${target.email})` : `ID ${id}`;
+
+      if (!confirm(`Yakin ingin menghapus akun ${label}? Tindakan ini tidak bisa dibatalkan.`)) {
+        return;
+      }
+
+      try {
+        const r = await fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers });
+        const d = await r.json();
+
+        if (!r.ok) {
+          alert(d.message || 'Gagal menghapus user.');
+          return;
+        }
+
+        loadUsers();
+      } catch (error) {
+        alert('Gagal menghapus user.');
+      }
+    }
+
+    async function createUser() {
+      try {
+        const r = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newName.value,
+            email: newEmail.value,
+            password: newPassword.value,
+            role: newRole.value,
+            class_name: newClass.value
+          })
+        });
+        const d = await r.json();
+        
+        document.getElementById('userCreateMsg').innerText = d.message || 'Selesai';
+        
+        if (r.ok) {
+          newName.value = '';
+          newEmail.value = '';
+          newPassword.value = '';
+          newClass.value = '';
+          
+          loadUsers();
+        }
+      } catch (error) {
+        document.getElementById('userCreateMsg').innerText = 'Gagal menyimpan akun.';
+      }
+    }
+
+    loadExams();
+    loadMyResults();
+  </script>
+</body>
+</html>

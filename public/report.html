@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laporan - CBT App</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>CBT App</strong>
+      <span id="userInfo" class="muted"></span>
+    </div>
+    <div>
+      <a href="/dashboard.html" class="button small">Dashboard</a>
+      <button id="logoutButton" class="button small">Keluar</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <p class="eyebrow">Hasil Ujian</p>
+      <h1>Laporan</h1>
+      <p class="muted">Ringkasan statistik semua ujian dalam satu tabel — beda dari "Rekap Hasil" per ujian di halaman Dashboard.</p>
+      <div id="reportBox" class="table-wrap"><p class="muted">Memuat...</p></div>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('cbt_token');
+    const user = JSON.parse(localStorage.getItem('cbt_user') || 'null');
+
+    if (!token || !user) {
+      window.location.href = '/login.html';
+    }
+    if (user.role !== 'teacher' && user.role !== 'admin') {
+      alert('Halaman ini hanya untuk Guru/Admin.');
+      window.location.href = '/dashboard.html';
+    }
+
+    const headers = { Authorization: `Bearer ${token}` };
+    document.getElementById('userInfo').textContent = `— ${user.name} (${user.role})`;
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      localStorage.removeItem('cbt_token');
+      localStorage.removeItem('cbt_user');
+      window.location.href = '/login.html';
+    });
+
+    async function loadReport() {
+      const reportBox = document.getElementById('reportBox');
+      try {
+        const res = await fetch('/api/admin/report', { headers });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Gagal memuat laporan.');
+
+        const rows = data.report || [];
+        if (rows.length === 0) {
+          reportBox.innerHTML = '<p class="muted">Belum ada ujian untuk dilaporkan.</p>';
+          return;
+        }
+
+        reportBox.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Ujian</th><th>Mata Pelajaran</th><th>Guru</th>
+                <th>Peserta</th><th>Sudah Submit</th>
+                <th>Rata-rata</th><th>Tertinggi</th><th>Terendah</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r) => `
+                <tr>
+                  <td>${r.title}</td>
+                  <td>${r.subject_name}</td>
+                  <td>${r.teacher_name}</td>
+                  <td>${r.total_participants}</td>
+                  <td>${r.submitted_count}</td>
+                  <td>${r.average_score ?? '-'}</td>
+                  <td>${r.highest_score ?? '-'}</td>
+                  <td>${r.lowest_score ?? '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (error) {
+        reportBox.innerHTML = `<p class="error-text">${error.message}</p>`;
+      }
+    }
+
+    loadReport();
+  </script>
+</body>
+</html>

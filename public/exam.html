@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kerjakan Ujian - CBT App</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>CBT App</strong>
+      <span id="examTitle" class="muted"></span>
+    </div>
+    <a class="button small" href="/dashboard.html">Kembali</a>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <p class="eyebrow">Pengerjaan Ujian</p>
+      <h1 id="title">Memuat ujian...</h1>
+      <p id="description" class="muted"></p>
+      <div id="timer" class="timer hidden"></div>
+      <div id="message" class="message hidden"></div>
+      <form id="examForm" class="exam-form"></form>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('cbt_token');
+    const user = JSON.parse(localStorage.getItem('cbt_user') || 'null');
+
+    if (!token || !user) {
+      window.location.href = '/login.html';
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const examId = params.get('examId');
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const form = document.getElementById('examForm');
+    const message = document.getElementById('message');
+    const title = document.getElementById('title');
+    const description = document.getElementById('description');
+    const examTitle = document.getElementById('examTitle');
+    const timerBox = document.getElementById('timer');
+
+    let timerInterval = null;
+    let remainingSeconds = 0;
+
+    function showMessage(text, type = 'error') {
+      message.className = `message ${type}`;
+      message.textContent = text;
+    }
+
+    function startTimer(minutes) {
+      remainingSeconds = Number(minutes || 0) * 60;
+      if (!remainingSeconds) return;
+
+      timerBox.className = 'timer';
+
+      timerInterval = setInterval(() => {
+        const minutesLeft = Math.floor(remainingSeconds / 60);
+        const secondsLeft = remainingSeconds % 60;
+        timerBox.textContent = `Sisa waktu: ${minutesLeft}:${String(secondsLeft).padStart(2, '0')}`;
+
+        if (remainingSeconds <= 0) {
+          clearInterval(timerInterval);
+          showMessage('Waktu habis. Jawaban akan dikirim otomatis.', 'success');
+          submitExam();
+        }
+
+        remainingSeconds -= 1;
+      }, 1000);
+    }
+
+    async function loadQuestions() {
+      try {
+        const response = await fetch(`/api/exams/${examId}/questions`, { headers });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Gagal memuat soal.');
+
+        title.textContent = data.exam.title;
+        examTitle.textContent = `— ${data.exam.title}`;
+        description.textContent = `${data.exam.subject_name} · Durasi ${data.exam.duration_minutes} menit`;
+
+        // Ubah saved_answers jadi Map supaya gampang dicari: question_id -> option_id
+        const savedMap = new Map((data.saved_answers || []).map((a) => [a.question_id, a.option_id]));
+
+        form.innerHTML = data.questions.map((question, index) => `
+          <fieldset class="question-card" data-question-id="${question.id}">
+            <legend>${index + 1}. ${question.question_text}</legend>
+            ${question.media_url ? (
+              question.media_type === 'video'
+                ? `<video src="${question.media_url}" controls style="max-width:100%; max-height:320px; border-radius:8px; margin:8px 0;"></video>`
+                : `<img src="${question.media_url}" style="max-width:100%; max-height:320px; border-radius:8px; margin:8px 0;">`
+            ) : ''}
+            ${question.options.map((option) => `
+              <label class="option-row">
+                <input type="radio" name="question_${question.id}" value="${option.id}" required
+                  ${savedMap.get(question.id) === option.id ? 'checked' : ''}>
+                <span>${option.option_label}. ${option.option_text}</span>
+              </label>
+            `).join('')}
+            <span class="autosave-status muted" id="autosave_${question.id}">
+              ${savedMap.has(question.id) ? 'Tersimpan' : ''}
+            </span>
+          </fieldset>
+        `).join('') + '<button class="button primary full" type="submit">Kirim Jawaban</button>';
+
+        // Pasang autosave: begitu siswa pilih 1 opsi, langsung kirim ke server tanpa nunggu submit akhir
+        form.querySelectorAll('input[type="radio"]').forEach((radio) => {
+          radio.addEventListener('change', () => saveAnswer(radio));
+        });
+
+        startTimer(data.exam.duration_minutes);
+      } catch (error) {
+        showMessage(error.message);
+        form.innerHTML = '<a class="button" href="/dashboard.html">Kembali ke Dashboard</a>';
+      }
+    }
+
+    async function saveAnswer(radio) {
+      const questionId = Number(radio.name.replace('question_', ''));
+      const optionId = Number(radio.value);
+      const statusEl = document.getElementById(`autosave_${questionId}`);
+
+      if (statusEl) {
+        statusEl.textContent = 'Menyimpan...';
+        statusEl.className = 'autosave-status muted';
+      }
+
+      try {
+        const response = await fetch(`/api/exams/${examId}/answer`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ question_id: questionId, option_id: optionId })
+        });
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.message || 'Gagal menyimpan jawaban.');
+
+        if (statusEl) {
+          statusEl.textContent = 'Tersimpan';
+          statusEl.className = 'autosave-status success-text';
+        }
+      } catch (error) {
+        if (statusEl) {
+          statusEl.textContent = 'Gagal tersimpan, coba pilih ulang.';
+          statusEl.className = 'autosave-status error-text';
+        }
+      }
+    }
+
+    async function submitExam() {
+      const formData = new FormData(form);
+      const answers = [];
+
+      for (const [key, value] of formData.entries()) {
+        if (key.startsWith('question_')) {
+          answers.push({
+            question_id: Number(key.replace('question_', '')),
+            option_id: Number(value)
+          });
+        }
+      }
+
+      try {
+        const response = await fetch(`/api/exams/${examId}/submit`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ answers })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Gagal mengirim jawaban.');
+
+        if (timerInterval) clearInterval(timerInterval);
+        showMessage(`Jawaban berhasil dikirim. Nilai Anda: ${data.score}`, 'success');
+        form.innerHTML = '<a class="button primary" href="/dashboard.html">Lihat Dashboard</a>';
+      } catch (error) {
+        showMessage(error.message);
+      }
+    }
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitExam();
+    });
+
+    loadQuestions();
+  </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+-- CBT Project Schema
+-- Database name is created automatically by scripts/setup-db.js based on DB_DATABASE in .env
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS student_answers;
+DROP TABLE IF EXISTS exam_attempts;
+DROP TABLE IF EXISTS options;
+DROP TABLE IF EXISTS questions;
+DROP TABLE IF EXISTS exams;
+DROP TABLE IF EXISTS subjects;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS roles;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE roles (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  description VARCHAR(150) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE users (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  role_id INT UNSIGNED NOT NULL,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(120) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  class_name VARCHAR(50) NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE subjects (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  description TEXT NULL,
+  teacher_id INT UNSIGNED NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_subjects_teacher FOREIGN KEY (teacher_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE exams (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  subject_id INT UNSIGNED NOT NULL,
+  teacher_id INT UNSIGNED NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  description TEXT NULL,
+  duration_minutes INT UNSIGNED NOT NULL DEFAULT 30,
+  start_time DATETIME NULL,
+  end_time DATETIME NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_exams_subject FOREIGN KEY (subject_id) REFERENCES subjects(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_exams_teacher FOREIGN KEY (teacher_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE questions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  exam_id INT UNSIGNED NOT NULL,
+  question_text TEXT NOT NULL,
+  point DECIMAL(5,2) NOT NULL DEFAULT 1.00,
+  question_order INT UNSIGNED NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_questions_exam FOREIGN KEY (exam_id) REFERENCES exams(id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE options (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  question_id INT UNSIGNED NOT NULL,
+  option_label CHAR(1) NOT NULL,
+  option_text TEXT NOT NULL,
+  is_correct TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_options_question FOREIGN KEY (question_id) REFERENCES questions(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  UNIQUE KEY uq_option_label_per_question (question_id, option_label)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE exam_attempts (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  exam_id INT UNSIGNED NOT NULL,
+  user_id INT UNSIGNED NOT NULL,
+  started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  finished_at DATETIME NULL,
+  score DECIMAL(5,2) NULL,
+  status ENUM('in_progress', 'submitted') NOT NULL DEFAULT 'in_progress',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_attempts_exam FOREIGN KEY (exam_id) REFERENCES exams(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_attempts_user FOREIGN KEY (user_id) REFERENCES users(id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE student_answers (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  attempt_id INT UNSIGNED NOT NULL,
+  question_id INT UNSIGNED NOT NULL,
+  option_id INT UNSIGNED NULL,
+  is_correct TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_answers_attempt FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_answers_question FOREIGN KEY (question_id) REFERENCES questions(id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_answers_option FOREIGN KEY (option_id) REFERENCES options(id)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  UNIQUE KEY uq_answer_per_question (attempt_id, question_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_users_role ON users(role_id);
+CREATE INDEX idx_exams_subject ON exams(subject_id);
+CREATE INDEX idx_questions_exam ON questions(exam_id);
+CREATE INDEX idx_options_question ON options(question_id);
+CREATE INDEX idx_attempts_exam_user ON exam_attempts(exam_id, user_id);
+CREATE INDEX idx_answers_attempt ON student_answers(attempt_id);

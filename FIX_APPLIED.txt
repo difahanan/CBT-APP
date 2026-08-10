@@ -1,0 +1,7 @@
+Perbaikan:
+1. Multi-attempt ujian mengambil attempt TERBARU (ORDER BY id DESC).
+2. Mencegah status lama 'in_progress/submitted' mengunci ujian baru.
+3. Tambah user admin tetap menggunakan kolom password.
+Jika masih gagal tambah user, jalankan:
+ALTER TABLE users ADD COLUMN password VARCHAR(255) NULL;
+atau sesuaikan schema users.
