@@ -169,3 +169,5 @@ npm start         # menjalankan server biasa
 - Password user disimpan dalam bentuk hash menggunakan `bcryptjs`.
 - Token login dibuat menggunakan `jsonwebtoken`.
 - Database dirancang berdasarkan kebutuhan CBT: user, role, mata pelajaran, ujian, soal, pilihan jawaban, sesi pengerjaan, jawaban siswa, dan nilai.
+
+## Otp menggunakan mailtrap.io. nnti coba pake gmail
