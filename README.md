@@ -2,8 +2,6 @@
 
 Project ini adalah fondasi aplikasi **Computer Based Test (CBT)** berbasis web. Struktur dan isinya disusun dari modul **Part 1 Project Planning & App Config**: analisis kebutuhan CBT, perancangan database, SQL schema, dan konfigurasi aplikasi melalui file `.env`.
 
-Aplikasi dibuat sederhana agar mudah dipelajari mahasiswa menggunakan **Visual Studio Code**.
-
 ## Fitur yang Sudah Berfungsi
 
 - Login menggunakan email dan password.
@@ -60,15 +58,11 @@ Pastikan komputer sudah memiliki:
 1. Visual Studio Code.
 2. Node.js versi 18 atau lebih baru.
 3. MySQL Server. Bisa memakai XAMPP, Laragon, MAMP, atau MySQL standalone.
-4. Browser, misalnya Chrome atau Edge.
+4. Browser.
 
 ## Cara Menjalankan di Visual Studio Code
 
-### 1. Buka Folder Project
-
-Ekstrak file ZIP, lalu buka folder `cbt-project-vscode` menggunakan Visual Studio Code.
-
-### 2. Install Dependency
+###. Install Dependency
 
 Buka terminal VS Code, lalu jalankan:
 
@@ -76,7 +70,7 @@ Buka terminal VS Code, lalu jalankan:
 npm install
 ```
 
-### 3. Buat File `.env`
+###. Buat File `.env`
 
 Salin file `.env.example` menjadi `.env`.
 
@@ -97,18 +91,16 @@ Pastikan konfigurasi database sesuai dengan MySQL lokal. Contoh default:
 ```env
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=cbt_db
+DB_DATABASE=cbt_database
 DB_USERNAME=root
 DB_PASSWORD=
 ```
 
 Jika MySQL memiliki password, isi bagian `DB_PASSWORD`.
 
-### 4. Jalankan MySQL
+Aktifkan Database
 
-Aktifkan MySQL melalui XAMPP/Laragon/MAMP atau service MySQL di komputer.
-
-### 5. Buat Database dan Data Contoh
+###Buat Database dan Data Contoh
 
 Jalankan perintah:
 
@@ -124,18 +116,10 @@ Perintah ini akan:
 - mengisi user demo,
 - mengisi mata pelajaran, ujian, soal, dan pilihan jawaban contoh.
 
-### 6. Jalankan Aplikasi
 
 ```bash
 npm run dev
 ```
-
-Buka browser ke alamat:
-
-```text
-http://localhost:3000
-```
-
 ## Akun Demo
 
 | Role | Email | Password |
@@ -162,10 +146,8 @@ npm run dev       # menjalankan server dengan nodemon
 npm start         # menjalankan server biasa
 ```
 
-## Catatan Penting untuk Pembelajaran
+## Catatan Penting
 
-- File `.env` tidak boleh diunggah ke GitHub karena berisi konfigurasi sensitif.
-- File `.env.example` boleh dibagikan karena hanya berisi contoh konfigurasi.
 - Password user disimpan dalam bentuk hash menggunakan `bcryptjs`.
 - Token login dibuat menggunakan `jsonwebtoken`.
 - Database dirancang berdasarkan kebutuhan CBT: user, role, mata pelajaran, ujian, soal, pilihan jawaban, sesi pengerjaan, jawaban siswa, dan nilai.
