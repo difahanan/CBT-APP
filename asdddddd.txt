@@ -1,0 +1,52 @@
+1. Apa definisi yang paling tepat untuk perangkat lunak (software) pada komputer?
+
+a) Perangkat fisik yang dapat disentuh dan dilihat secara kasat mata.
+b) Sekumpulan instruksi, data, atau program yang dipakai untuk mengoperasikan komputer.
+c) Tempat penyimpanan data utama yang bersifat sementara.
+d) Komponen yang berfungsi menyalurkan arus listrik ke seluruh komponen.
+e) Otak utama pemprosesan data fisik di dalam CPU.
+
+Jawaban: b
+
+2. dari pilihan yang berfungsi sebagai sistem operasi untuk mengelola perangkat keras dan aplikasi?
+
+a) Microsoft Wordb) 
+b. Google Chromec) 
+c. Microsoft Windows
+d. Adobe Photoshope)
+e. Winamp
+
+Jawaban: c
+
+3. dari gambar perangkat lunak yang khusus digunakan untuk mengolah kata atau membuat dokumen laporan adalah
+
+a) Microsoft Excel
+b) Microsoft Accessc) 
+c. Microsoft Wordd) 
+d. Adobe Illustratore) 
+e. CorelDraw
+
+Jawaban: c
+
+4. Jenis perangkat lunak yang kode sumbernya dibuka untuk umum dan boleh dimodifikasi oleh siapa saja disebut:
+
+a) Closed Sourceb)
+b. Adwarec) 
+c. Malwared) 
+d. Open Sourcee)
+e. Shareware
+
+Jawaban: d
+
+5. Program yang dirancang khusus untuk melakukan perbaikan, pemeliharaan, serta perlindungan sistem komputer dari virus disebut perangkat lunak:
+a) Aplikasi perkantoran
+b) Bahasa pemrograman
+c) Utilitas 
+d. Game interaktife) 
+e. Pengolah multimedia
+
+Jawaban: c
+
+- ganti verivikasi email dari mailtrap.io ke gmail.com
+- tambahkan fitur voice untuk membuat soal(admin/guru, misalnya malas ngetik gitu kan pakai suara)
+
